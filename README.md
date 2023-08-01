@@ -1,67 +1,48 @@
-# Jenkins Setup
+# Jenkins-101
 
-### Update, Upgrade Server and Clean Server
+Jenkins Master node is deployed using a custom Docker image based on jenkins/jenkins:lts. In this setup, the Jenkins container is mounted to the Docker Daemon socket of the host machine. This arrangement enables us to seamlessly run and build Docker images within the Jenkins Master node by leveraging the exposed Docker socket.
+
+* Update, Upgrade Server and Clean Server
 ```
 sudo apt-get update && sudo apt-get upgrade && sudo apt-get autoremove && sudo apt-get autoclean
 ```
 
-### Install Docker
+* Install Docker
 ```
 sudo curl -sSL https://get.docker.com/ | sh
 ```
 
-### Setup Jenkins
-
-Make Dockerfile
+* Make Jenkins custom Dockerfile
 
 ```
-FROM jenkins/jenkins:2.401.3-jdk17
+FROM jenkins/jenkins:lts
 USER root
-RUN apt-get update && apt-get install -y lsb-release
-RUN curl -fsSLo /usr/share/keyrings/docker-archive-keyring.asc \
-  https://download.docker.com/linux/debian/gpg
-RUN echo "deb [arch=$(dpkg --print-architecture) \
-  signed-by=/usr/share/keyrings/docker-archive-keyring.asc] \
-  https://download.docker.com/linux/debian \
-  $(lsb_release -cs) stable" > /etc/apt/sources.list.d/docker.list
-RUN apt-get update && apt-get install -y docker-ce-cli
-USER jenkins
-RUN jenkins-plugin-cli --plugins "blueocean docker-workflow"
+RUN apt-get update -qq \
+    && apt-get install -qqy apt-transport-https ca-certificates curl gnupg2 software-properties-common
+RUN curl -fsSL https://download.docker.com/linux/debian/gpg | apt-key add -
+RUN add-apt-repository \
+   "deb [arch=amd64] https://download.docker.com/linux/debian \
+   $(lsb_release -cs) \
+   stable"
+RUN apt-get update  -qq \
+    && apt-get -y install docker-ce
+RUN usermod -aG docker jenkins
 ```
 
-Create Docker Network
-```
-docker network create jenkins
-```
-
-Build Docker Image
+* Build Jenkins Docker Image
 
 ```
-docker build -t myjenkins-blueocean:2.401.3-1 .
+docker build -t jenkins-master-dind:latest
 ```
 
-Run Docker Image
+Run Jenkins Docker Image
 
 ```
 docker run \
-  --name jenkins-blueocean \
-  --restart=on-failure \
-  --detach \
-  --network jenkins \
-  --env DOCKER_HOST=tcp://docker:2376 \
-  --env DOCKER_CERT_PATH=/certs/client \
-  --env DOCKER_TLS_VERIFY=1 \
-  --publish 8080:8080 \
-  --publish 50000:50000 \
-  --volume jenkins-data:/var/jenkins_home \
-  --volume jenkins-docker-certs:/certs/client:ro \
-  myjenkins-blueocean:2.401.3-1
+  --name jenkins 
+  --rm -it 
+  -p 8080:8080 -p 50000:50000 
+  -v /var/run/docker.sock:/var/run/docker.sock 
+  -v jenkins_home:/var/jenkins_home 
+  -d jenkins-master-dind:latest
 ```
-
-
-### Configure Docker Socket for Cloud Agent
-* `sudo nano /lib/systemd/system/docker.service`
-* Replace existing `ExecStart` line with `ExecStart=/usr/bin/dockerd -H tcp://0.0.0.0:4243 -H unix:///var/run/docker.sock`
-* sudo systemctl daemon-reload
-* sudo service docker restart
-* curl http://localhost:4243/version
