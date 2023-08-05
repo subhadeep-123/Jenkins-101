@@ -1,7 +1,8 @@
 pipeline {
     environment {
-        region = "us-east-1"
-        registry = "593100728347.dkr.ecr.${region}.amazonaws.com/jenkins-101"
+        REGION = "us-east-1"
+        ECR_URI = "${AWS_ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com"
+        REPOSITORY_URI = "${ECR_URI}/jenkins-101"
         dockerImage = ""
     }
     
@@ -17,10 +18,10 @@ pipeline {
         stage('Build Application') {
             steps {
                 sh "docker build -t jenkins-101:latest ."
-                sh "docker tag jenkins-101:latest 593100728347.dkr.ecr.us-east-1.amazonaws.com/jenkins-101:$BUILD_NUMBER"
+                sh "docker tag jenkins-101:latest $REPOSITORY_URI:$BUILD_NUMBER"
 
                 script {
-                  dockerImage = "593100728347.dkr.ecr.us-east-1.amazonaws.com/jenkins-101" + ":$BUILD_NUMBER"
+                  dockerImage = "$REPOSITORY_URI" + ":$BUILD_NUMBER"
                 }
             }
         }
@@ -35,13 +36,19 @@ pipeline {
             steps {
                 script {
                     withCredentials([usernamePassword(credentialsId: 'jenkins-101-aws-creds', passwordVariable: 'AWS_SECRET_ACCESS_KEY', usernameVariable: 'AWS_ACCESS_KEY_ID')]) {
-                        sh('aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY') // String Interpolation
+                        sh('aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY')
                         sh """
                         aws configure set aws_access_key_id ${AWS_ACCESS_KEY_ID}
-                        aws ecr get-login --region ${region} --no-include-email
+                        aws ecr get-login-password --region ${REGION} | docker login --username AWS --password-stdin ${ECR_URI}
                         """
                     }
                 }
+            }
+        }
+        
+        stage('Push Docker Image') {
+            steps {
+                sh "docker push $dockerImage"
             }
         }
     }
