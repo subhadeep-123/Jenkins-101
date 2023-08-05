@@ -17,6 +17,11 @@ pipeline {
         stage('Build Application') {
             steps {
                 sh "docker build -t jenkins-101:latest ."
+                sh "docker tag jenkins-101:latest 593100728347.dkr.ecr.us-east-1.amazonaws.com/jenkins-101:$BUILD_NUMBER"
+
+                script {
+                  dockerImage = "593100728347.dkr.ecr.us-east-1.amazonaws.com/jenkins-101" + ":$BUILD_NUMBER"
+                }
             }
         }
         
