@@ -48,3 +48,7 @@ docker run \
   -v jenkins_home:/var/jenkins_home \
   -d jenkins-master-dind:latest 
 ```
+
+### Plugins Used 
+  1. Docker
+  2. Credentials Plugin
