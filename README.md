@@ -2,9 +2,11 @@
 
 Jenkins Master node is deployed using a custom Docker image based on jenkins/jenkins:lts. In this setup, the Jenkins container is mounted to the Docker Daemon socket of the host machine. This arrangement enables us to seamlessly run and build Docker images within the Jenkins Master node by leveraging the exposed Docker socket.
 
+### Jenkins Setup
+
 * Update, Upgrade Server and Clean Server
 ```
-sudo apt-get update && sudo apt-get upgrade && sudo apt-get autoremove && sudo apt-get autoclean
+sudo apt-get update && sudo apt-get upgrade -y && sudo apt-get autoremove -y && sudo apt-get autoclean -y
 ```
 
 * Install Docker
@@ -25,24 +27,24 @@ RUN add-apt-repository \
    $(lsb_release -cs) \
    stable"
 RUN apt-get update  -qq \
-    && apt-get -y install docker-ce
+    && apt-get -y install docker-ce awscli
 RUN usermod -aG docker jenkins
 ```
 
 * Build Jenkins Docker Image
 
 ```
-docker build -t jenkins-master-dind:latest
+docker build -t jenkins-master-dind:latest .
 ```
 
 Run Jenkins Docker Image
 
 ```
 docker run \
-  --name jenkins 
-  -it 
-  -p 8080:8080 -p 50000:50000 
-  -v /var/run/docker.sock:/var/run/docker.sock 
-  -v jenkins_home:/var/jenkins_home 
-  -d jenkins-master-dind:latest
+  --name jenkins \
+  -it \
+  -p 8080:8080 -p 50000:50000 \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  -v jenkins_home:/var/jenkins_home \
+  -d jenkins-master-dind:latest 
 ```
