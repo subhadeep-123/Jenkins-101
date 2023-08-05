@@ -1,4 +1,10 @@
 pipeline {
+    environment {
+        region = "us-east-1"
+        registry = "593100728347.dkr.ecr.${region}.amazonaws.com/jenkins-101"
+        dockerImage = ""
+    }
+    
     agent any
     
     stages {
